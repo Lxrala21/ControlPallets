@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administración de BINs</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .bins-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .bin-item {
+            padding: 10px;
+            background: var(--surface-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 2px;
+            font-size: 0.875rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .bin-item.bin-type {
+            border-left: 3px solid #4CAF50;
+        }
+
+        .bin-item.normal-type {
+            border-left: 3px solid #2196F3;
+        }
+
+        .bin-code {
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        .bin-badge {
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .bin-badge.bin {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+
+        .bin-badge.normal {
+            background: #E3F2FD;
+            color: #1565C0;
+        }
+
+        .filter-section {
+            display: flex;
+            gap: 12px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            padding: 20px;
+            background: var(--surface-elevated);
+            border-radius: 2px;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-box h3 {
+            font-size: 2rem;
+            margin: 0 0 8px 0;
+            color: var(--primary-color);
+        }
+
+        .stat-box p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Volver al Sistema Principal</a>
+
+        <header>
+            <h1>🗄️ Administración de BINs</h1>
+        </header>
+
+        <div class="card">
+            <h2>Estadísticas de Ubicaciones</h2>
+            <div class="stats-summary">
+                <div class="stat-box">
+                    <h3 id="totalBins">0</h3>
+                    <p>Total de BINs</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="totalNormales">0</h3>
+                    <p>Ubicaciones Normales</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="totalUbicaciones">0</h3>
+                    <p>Total de Ubicaciones</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="binsEnUso">0</h3>
+                    <p>BINs en Uso</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Gestión de Ubicaciones BIN</h2>
+
+            <div class="filter-section">
+                <div class="search-box">
+                    <input
+                        type="text"
+                        id="searchBins"
+                        placeholder="🔍 Buscar BIN por código..."
+                        style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 2px;">
+                </div>
+
+                <select id="filterType" style="padding: 10px; border: 1px solid var(--border-color); border-radius: 2px;">
+                    <option value="all">Todas las Ubicaciones</option>
+                    <option value="bin">Solo BINs</option>
+                    <option value="normal">Solo Normales</option>
+                </select>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="exportBinsList()">📥 Exportar Lista</button>
+                    <button class="btn btn-secondary" onclick="reloadUbicaciones()">🔄 Recargar</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 12px; color: var(--text-secondary); font-size: 0.875rem;">
+                <span id="filterCount">Mostrando todas las ubicaciones</span>
+            </div>
+
+            <div id="binsGrid" class="bins-grid">
+                <!-- Los BINs se cargarán aquí -->
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Análisis por Serie</h2>
+            <div id="seriesAnalysis">
+                <!-- El análisis se cargará aquí -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cargar ubicaciones del localStorage
+        function loadUbicaciones() {
+            const data = localStorage.getItem('ubicaciones');
+            return data ? JSON.parse(data) : [];
+        }
+
+        // Cargar pallets del localStorage
+        function loadPallets() {
+            const data = localStorage.getItem('pallets');
+            return data ? JSON.parse(data) : [];
+        }
+
+        // Renderizar ubicaciones
+        function renderUbicaciones(filter = 'all', searchQuery = '') {
+            const ubicaciones = loadUbicaciones();
+            const pallets = loadPallets();
+            const binsGrid = document.getElementById('binsGrid');
+
+            // Obtener BINs en uso
+            const binsEnUso = new Set(pallets.map(p => p.ubicacion));
+
+            // Filtrar ubicaciones
+            let filtered = ubicaciones;
+
+            if (filter === 'bin') {
+                filtered = ubicaciones.filter(u => u.esBin);
+            } else if (filter === 'normal') {
+                filtered = ubicaciones.filter(u => !u.esBin);
+            }
+
+            if (searchQuery) {
+                filtered = filtered.filter(u =>
+                    u.codigo.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+            }
+
+            // Ordenar alfabéticamente
+            filtered.sort((a, b) => a.codigo.localeCompare(b.codigo));
+
+            // Renderizar
+            binsGrid.innerHTML = filtered.map(u => `
+                <div class="bin-item ${u.esBin ? 'bin-type' : 'normal-type'}">
+                    <span class="bin-code">${u.codigo}</span>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <span class="bin-badge ${u.esBin ? 'bin' : 'normal'}">
+                            ${u.esBin ? 'BIN' : 'Normal'}
+                        </span>
+                        ${binsEnUso.has(u.codigo) ? '<span style="color: #4CAF50;">●</span>' : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            // Actualizar contador
+            document.getElementById('filterCount').textContent =
+                `Mostrando ${filtered.length} de ${ubicaciones.length} ubicaciones`;
+        }
+
+        // Actualizar estadísticas
+        function updateStats() {
+            const ubicaciones = loadUbicaciones();
+            const pallets = loadPallets();
+
+            const bins = ubicaciones.filter(u => u.esBin);
+            const normales = ubicaciones.filter(u => !u.esBin);
+            const binsEnUso = new Set(pallets.map(p => p.ubicacion));
+            const binsUsados = bins.filter(b => binsEnUso.has(b.codigo));
+
+            document.getElementById('totalBins').textContent = bins.length;
+            document.getElementById('totalNormales').textContent = normales.length;
+            document.getElementById('totalUbicaciones').textContent = ubicaciones.length;
+            document.getElementById('binsEnUso').textContent = binsUsados.length;
+        }
+
+        // Análisis por serie
+        function renderSeriesAnalysis() {
+            const ubicaciones = loadUbicaciones();
+            const bins = ubicaciones.filter(u => u.esBin);
+
+            // Agrupar por serie
+            const series = {};
+            bins.forEach(bin => {
+                const match = bin.codigo.match(/^(A\d{2})-F(\d{3})/);
+                if (match) {
+                    const serie = match[1]; // A01, A02, A03, etc.
+                    if (!series[serie]) {
+                        series[serie] = new Set();
+                    }
+                    series[serie].add(bin.codigo);
+                }
+            });
+
+            // Renderizar tabla
+            const seriesAnalysis = document.getElementById('seriesAnalysis');
+            seriesAnalysis.innerHTML = `
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: var(--bg-color);">
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border-color);">Serie</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid var(--border-color);">Total de BINs</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Object.entries(series)
+                            .sort((a, b) => a[0].localeCompare(b[0]))
+                            .map(([serie, bins]) => `
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid var(--border-light);">
+                                        <strong>${serie}</strong>
+                                    </td>
+                                    <td style="padding: 10px; text-align: right; border-bottom: 1px solid var(--border-light);">
+                                        ${bins.size}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr style="background: var(--bg-color); font-weight: 600;">
+                            <td style="padding: 12px; border-top: 2px solid var(--border-color);">TOTAL</td>
+                            <td style="padding: 12px; text-align: right; border-top: 2px solid var(--border-color);">
+                                ${bins.length}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            `;
+        }
+
+        // Exportar lista de BINs
+        function exportBinsList() {
+            const ubicaciones = loadUbicaciones();
+            const bins = ubicaciones.filter(u => u.esBin).sort((a, b) => a.codigo.localeCompare(b.codigo));
+
+            let content = 'LISTA DE UBICACIONES BIN\n';
+            content += '='.repeat(50) + '\n\n';
+            content += `Total de BINs: ${bins.length}\n`;
+            content += `Fecha de exportación: ${new Date().toLocaleString('es-MX')}\n\n`;
+            content += '-'.repeat(50) + '\n\n';
+
+            bins.forEach((bin, index) => {
+                content += `${(index + 1).toString().padStart(4, '0')}. ${bin.codigo}\n`;
+            });
+
+            // Crear y descargar archivo
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bins-lista-${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Recargar ubicaciones
+        function reloadUbicaciones() {
+            location.reload();
+        }
+
+        // Event listeners
+        document.getElementById('searchBins').addEventListener('input', (e) => {
+            const filter = document.getElementById('filterType').value;
+            renderUbicaciones(filter, e.target.value);
+        });
+
+        document.getElementById('filterType').addEventListener('change', (e) => {
+            const search = document.getElementById('searchBins').value;
+            renderUbicaciones(e.target.value, search);
+        });
+
+        // Inicializar
+        updateStats();
+        renderUbicaciones();
+        renderSeriesAnalysis();
+    </script>
+</body>
+</html>

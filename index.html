@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Pallets</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📦 Sistema de Control de Pallets</h1>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="tabs">
+            <button class="tab-button active" data-tab="registro">
+                📝 Registro de Pallets
+            </button>
+            <button class="tab-button" data-tab="dashboard">
+                📊 Dashboard
+            </button>
+            <button class="tab-button" data-tab="duplicados">
+                🔄 Duplicados
+            </button>
+            <button class="tab-button" data-tab="configuracion">
+                ⚙️ Configuración
+            </button>
+            <a href="bins-admin.html" style="text-decoration: none;">
+                <button class="tab-button" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    🗄️ Admin BINs
+                </button>
+            </a>
+        </nav>
+
+        <!-- Registro Tab -->
+        <div id="registro" class="tab-content active">
+            <div class="card">
+                <h2>Registrar Nuevo Pallet</h2>
+                <form id="palletForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="palletId">Pallet ID *</label>
+                            <input type="text" id="palletId" required placeholder="Ej: PLT-001">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="piezas">Piezas *</label>
+                            <input type="text" id="piezas" required placeholder="Nombre de las piezas">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="condicion">Condición *</label>
+                            <input type="text" id="condicion" required placeholder="Ej: Bueno, Dañado, etc.">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="area">Área *</label>
+                            <input type="text" id="area" required placeholder="Ej: Almacén, Producción">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fecha">Fecha *</label>
+                            <input type="date" id="fecha" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="turno">Turno *</label>
+                            <select id="turno" required>
+                                <option value="">Seleccione un turno</option>
+                                <option value="Dia">Dia</option>
+                                <option value="Noche">Noche</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ubicacion">Ubicación *</label>
+                            <select id="ubicacion" required>
+                                <option value="">Seleccione una ubicación</option>
+                            </select>
+                            <button type="button" class="btn-add-ubicacion" onclick="openQuickUbicacionModal()">
+                                + Nueva Ubicación
+                            </button>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="qty">QTY *</label>
+                            <input type="number" id="qty" required min="1" placeholder="Cantidad">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Registrar Pallet</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Lista de Pallets Registrados</h2>
+                <div class="table-controls">
+                    <input type="text" id="searchInput" placeholder="🔍 Buscar por ID, piezas, ubicación...">
+                    <button id="clearAllBtn" class="btn btn-danger">Limpiar Todo</button>
+                </div>
+
+                <!-- Filtros Avanzados -->
+                <div style="margin: 16px 0; padding: 16px; background-color: var(--bg-color); border-radius: 2px; border: 1px solid var(--border-light);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <h3 style="font-size: 0.875rem; font-weight: 600; margin: 0;">Filtros</h3>
+                        <button id="clearFiltersBtn" class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;">
+                            Limpiar Filtros
+                        </button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;">
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">Turno</label>
+                            <select id="filterTurno" class="filter-select" style="width: 100%; padding: 6px 10px; font-size: 0.8125rem; border: 1px solid var(--border-color); border-radius: 2px;">
+                                <option value="">Todos</option>
+                                <option value="Dia">Dia</option>
+                                <option value="Noche">Noche</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">Condición</label>
+                            <select id="filterCondicion" class="filter-select" style="width: 100%; padding: 6px 10px; font-size: 0.8125rem; border: 1px solid var(--border-color); border-radius: 2px;">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">Área</label>
+                            <select id="filterArea" class="filter-select" style="width: 100%; padding: 6px 10px; font-size: 0.8125rem; border: 1px solid var(--border-color); border-radius: 2px;">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">Ubicación</label>
+                            <select id="filterUbicacion" class="filter-select" style="width: 100%; padding: 6px 10px; font-size: 0.8125rem; border: 1px solid var(--border-color); border-radius: 2px;">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">Desde Fecha</label>
+                            <input type="date" id="filterFechaDesde" style="width: 100%; padding: 6px 10px; font-size: 0.8125rem; border: 1px solid var(--border-color); border-radius: 2px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">Hasta Fecha</label>
+                            <input type="date" id="filterFechaHasta" style="width: 100%; padding: 6px 10px; font-size: 0.8125rem; border: 1px solid var(--border-color); border-radius: 2px;">
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; font-size: 0.75rem; color: var(--text-secondary);">
+                        <span id="filterResultCount">Mostrando todos los pallets</span>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="palletsTable">
+                        <thead>
+                            <tr>
+                                <th>Pallet ID</th>
+                                <th>Piezas</th>
+                                <th>QTY</th>
+                                <th>Condición</th>
+                                <th>Área</th>
+                                <th>Fecha</th>
+                                <th>Turno</th>
+                                <th>Ubicación</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="palletsTableBody">
+                            <!-- Los pallets se cargarán aquí dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                <h2 style="margin: 0;">📊 Dashboard de Control</h2>
+                <button onclick="exportDashboardToExcel()" class="btn btn-primary" style="white-space: nowrap;">
+                    📥 Exportar Dashboard
+                </button>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card stat-card-highlight">
+                    <div class="stat-icon">🔵</div>
+                    <div class="stat-content">
+                        <h3 id="palletsEnBin">0</h3>
+                        <p>Pallets en BIN</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🏭</div>
+                    <div class="stat-content">
+                        <h3 id="palletsWorkcenter">0</h3>
+                        <p>Pallets Workcenter</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📦</div>
+                    <div class="stat-content">
+                        <h3 id="totalPallets">0</h3>
+                        <p>Total de Pallets</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⚠️</div>
+                    <div class="stat-content">
+                        <h3 id="palletsSinAsignar">0</h3>
+                        <p>Pallets Sin Asignar</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-grid-large">
+                <div class="card card-highlight">
+                    <h2>📊 Comparativo BIN vs Normal por Día</h2>
+                    <canvas id="binVsNormalChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📈 Análisis Día a Día</h2>
+                <div class="table-container">
+                    <table id="analisisDiaTable">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Pallets Totales</th>
+                                <th>Pallets en BIN</th>
+                                <th>Pallets Normales</th>
+                                <th>Total QTY</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analisisDiaTableBody">
+                            <!-- Se cargará dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="card">
+                    <h2>Pallets por Ubicación</h2>
+                    <canvas id="ubicacionesChart"></canvas>
+                </div>
+                <div class="card">
+                    <h2>Total de Pallets por Día</h2>
+                    <canvas id="palletsPorDiaChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📍 Pallets por Ubicación y Día</h2>
+                <div class="table-container">
+                    <table id="ubicacionesPorDiaTable">
+                        <thead id="ubicacionesPorDiaTableHead">
+                            <!-- Se cargará dinámicamente -->
+                        </thead>
+                        <tbody id="ubicacionesPorDiaTableBody">
+                            <!-- Se cargará dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="card">
+                    <h2>Pallets por Condición</h2>
+                    <canvas id="condicionChart"></canvas>
+                </div>
+                <div class="card">
+                    <h2>Pallets por Área</h2>
+                    <canvas id="areaChart"></canvas>
+                </div>
+                <div class="card">
+                    <h2>Pallets por Turno</h2>
+                    <canvas id="turnoChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Resumen General</h2>
+                <div id="resumenGeneral" class="resumen-container">
+                    <!-- El resumen se cargará aquí dinámicamente -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Duplicados Tab -->
+        <div id="duplicados" class="tab-content">
+            <div class="card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                    <div>
+                        <h2 style="margin: 0 0 8px 0;">🔄 Control de Pallets Duplicados</h2>
+                        <p style="color: var(--text-secondary); margin: 0; font-size: 0.875rem;">
+                            Pallets con el mismo ID y Fecha registrados múltiples veces en el sistema
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="exportDuplicadosToExcel()" class="btn btn-secondary" style="white-space: nowrap;">
+                            📥 Exportar Excel
+                        </button>
+                        <button onclick="refreshDuplicados()" class="btn btn-primary" style="white-space: nowrap;">
+                            🔄 Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Estadísticas de Duplicados -->
+                <div class="stats-grid" style="margin-bottom: 24px;">
+                    <div class="stat-card">
+                        <div class="stat-icon">🔄</div>
+                        <div class="stat-content">
+                            <h3 id="totalDuplicados">0</h3>
+                            <p>Total Duplicados</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-content">
+                            <h3 id="palletIdsDuplicados">0</h3>
+                            <p>Pallet IDs Afectados</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-content">
+                            <h3 id="fechasDuplicadas">0</h3>
+                            <p>Fechas con Duplicados</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📍</div>
+                        <div class="stat-content">
+                            <h3 id="ubicacionesDuplicadas">0</h3>
+                            <p>Ubicaciones Afectadas</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros para Duplicados -->
+                <div style="margin-bottom: 20px; padding: 16px; background-color: var(--bg-color); border-radius: 2px; border: 1px solid var(--border-light);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <h3 style="font-size: 0.875rem; font-weight: 600; margin: 0;">Filtrar Duplicados</h3>
+                        <button onclick="clearDuplicadosFilters()" class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;">
+                            Limpiar Filtros
+                        </button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">Pallet ID</label>
+                            <input type="text" id="filterDupPalletId" placeholder="Buscar por ID..."
+                                   style="width: 100%; padding: 6px 10px; font-size: 0.8125rem; border: 1px solid var(--border-color); border-radius: 2px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">Fecha</label>
+                            <input type="date" id="filterDupFecha"
+                                   style="width: 100%; padding: 6px 10px; font-size: 0.8125rem; border: 1px solid var(--border-color); border-radius: 2px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">Ubicación</label>
+                            <select id="filterDupUbicacion"
+                                    style="width: 100%; padding: 6px 10px; font-size: 0.8125rem; border: 1px solid var(--border-color); border-radius: 2px;">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; font-size: 0.75rem; color: var(--text-secondary);">
+                        <span id="duplicadosFilterResultCount">Mostrando todos los duplicados</span>
+                    </div>
+                </div>
+
+                <!-- Tabla de Duplicados Agrupados -->
+                <div id="duplicadosContent">
+                    <p style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        Cargando duplicados...
+                    </p>
+                </div>
+            </div>
+
+            <!-- Tabla Detallada de Todos los Duplicados -->
+            <div class="card">
+                <h2>📊 Lista Completa de Registros Duplicados</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.875rem;">
+                    Todos los registros con PalletID + Fecha duplicados en el sistema
+                </p>
+                <div class="table-container">
+                    <table id="duplicadosDetalleTable">
+                        <thead>
+                            <tr>
+                                <th>Pallet ID</th>
+                                <th>Piezas</th>
+                                <th>QTY</th>
+                                <th>Condición</th>
+                                <th>Área</th>
+                                <th>Fecha</th>
+                                <th>Turno</th>
+                                <th>Ubicación</th>
+                                <th>Grupo</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="duplicadosDetalleTableBody">
+                            <!-- Los duplicados se cargarán aquí dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuración Tab -->
+        <div id="configuracion" class="tab-content">
+            <div class="card">
+                <h2>📁 Importar/Exportar Datos</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 0.875rem;">
+                    Importa pallets desde un archivo Excel o exporta los datos actuales.
+                </p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px;">
+                    <div style="border: 1px solid var(--border-color); padding: 20px; border-radius: 2px; background-color: var(--surface-elevated);">
+                        <h3 style="font-size: 0.9375rem; margin-bottom: 12px; font-weight: 600;">Importar desde Excel</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 16px;">
+                            Selecciona un archivo Excel (.xlsx, .xls) con los datos de los pallets.
+                        </p>
+                        <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display: none;">
+                        <button class="btn btn-primary" onclick="document.getElementById('excelFileInput').click()" style="width: 100%;">
+                            📤 Seleccionar Archivo Excel
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadExcelTemplate()" style="width: 100%; margin-top: 10px;">
+                            📋 Descargar Plantilla
+                        </button>
+                    </div>
+
+                    <div style="border: 1px solid var(--border-color); padding: 20px; border-radius: 2px; background-color: var(--surface-elevated);">
+                        <h3 style="font-size: 0.9375rem; margin-bottom: 12px; font-weight: 600;">Exportar a Excel</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 16px;">
+                            Descarga todos los pallets registrados en formato Excel.
+                        </p>
+                        <button class="btn btn-primary" onclick="exportToExcel()" style="width: 100%;">
+                            📥 Exportar Datos
+                        </button>
+                    </div>
+                </div>
+
+                <div id="importPreview" style="display: none; margin-top: 20px; padding: 16px; background-color: #f8f9fa; border: 1px solid var(--border-color); border-radius: 2px;">
+                    <h3 style="font-size: 0.9375rem; margin-bottom: 12px; font-weight: 600;">Vista Previa de Importación</h3>
+                    <div id="importPreviewContent"></div>
+                    <div style="display: flex; gap: 10px; margin-top: 16px;">
+                        <button class="btn btn-primary" onclick="confirmImport()">Confirmar Importación</button>
+                        <button class="btn btn-secondary" onclick="cancelImport()">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Gestión de Ubicaciones</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 0.875rem;">
+                    Administra las ubicaciones disponibles para el registro de pallets. Las ubicaciones marcadas como BIN se contabilizarán en el dashboard especial.
+                </p>
+
+                <form id="ubicacionForm" style="margin-bottom: 30px;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="nuevaUbicacion">Código de Ubicación *</label>
+                            <input type="text" id="nuevaUbicacion" required placeholder="Ej: MTY-MAXX-FFT-AREA04">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="esUbicacionBin">Tipo de Ubicación</label>
+                            <select id="esUbicacionBin" required>
+                                <option value="false">Ubicación Normal</option>
+                                <option value="true">Ubicación BIN</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Agregar Ubicación</button>
+                </form>
+
+                <div style="border-top: 1px solid var(--divider); padding-top: 20px;">
+                    <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Ubicaciones Registradas
+                    </h3>
+
+                    <div id="ubicacionesList" class="ubicaciones-list">
+                        <!-- Las ubicaciones se cargarán aquí dinámicamente -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Información del Sistema</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Versión:</span>
+                        <span class="info-value">1.0.0 Enterprise</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Total de Ubicaciones:</span>
+                        <span class="info-value" id="totalUbicaciones">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Ubicaciones BIN:</span>
+                        <span class="info-value" id="totalUbicacionesBin">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Ubicaciones Normales:</span>
+                        <span class="info-value" id="totalUbicacionesNormales">0</span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                    <h3 style="font-size: 0.9375rem; margin-bottom: 12px;">Actualizaciones del Sistema</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 16px;">
+                        Si agregaste nuevos BINs o no ves todas las ubicaciones, actualiza el sistema para cargar los datos más recientes.
+                    </p>
+                    <a href="reset-ubicaciones.html" style="text-decoration: none;">
+                        <button class="btn btn-primary" style="width: 100%;">
+                            🔄 Actualizar BINs y Ubicaciones
+                        </button>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Nueva Ubicación Rápida -->
+    <div id="quickUbicacionModal" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2>Agregar Ubicación</h2>
+                <span class="close-modal" onclick="closeQuickUbicacionModal()">&times;</span>
+            </div>
+            <form id="quickUbicacionForm">
+                <div class="form-group">
+                    <label for="quickNuevaUbicacion">Código de Ubicación *</label>
+                    <input type="text" id="quickNuevaUbicacion" required placeholder="Ej: MTY-WAREHOUSE-A1">
+                </div>
+
+                <div class="form-group">
+                    <label for="quickEsUbicacionBin">Tipo de Ubicación</label>
+                    <select id="quickEsUbicacionBin" required>
+                        <option value="false">Ubicación Normal</option>
+                        <option value="true">Ubicación BIN</option>
+                    </select>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeQuickUbicacionModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Agregar y Usar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Edición -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Editar Pallet</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <form id="editPalletForm">
+                <input type="hidden" id="editPalletInternalId">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editPalletId">Pallet ID *</label>
+                        <input type="text" id="editPalletId" required placeholder="Ej: PLT-001">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editPiezas">Piezas *</label>
+                        <input type="text" id="editPiezas" required placeholder="Nombre de las piezas">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editCondicion">Condición *</label>
+                        <input type="text" id="editCondicion" required placeholder="Ej: Bueno, Dañado, etc.">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editArea">Área *</label>
+                        <input type="text" id="editArea" required placeholder="Ej: Almacén, Producción">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editFecha">Fecha *</label>
+                        <input type="date" id="editFecha" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editTurno">Turno *</label>
+                        <select id="editTurno" required>
+                            <option value="">Seleccione un turno</option>
+                            <option value="Dia">Dia</option>
+                            <option value="Noche">Noche</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editUbicacion">Ubicación *</label>
+                        <select id="editUbicacion" required>
+                            <option value="">Seleccione una ubicación</option>
+                        </select>
+                        <button type="button" class="btn-add-ubicacion" onclick="openQuickUbicacionModal()">
+                            + Nueva Ubicación
+                        </button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editQty">QTY *</label>
+                        <input type="number" id="editQty" required min="1" placeholder="Cantidad">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelEdit">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS CDN para importar/exportar Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="app.js"></script>
+    <script src="duplicados_functions.js"></script>
+</body>
+</html>

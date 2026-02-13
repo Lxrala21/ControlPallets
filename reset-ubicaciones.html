@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actualizando BINs...</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 500px;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        p {
+            font-size: 16px;
+            margin-bottom: 12px;
+            opacity: 0.9;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 30px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: white;
+            width: 0%;
+            animation: loading 2s ease-in-out forwards;
+        }
+
+        @keyframes loading {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+
+        .status {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-top: 20px;
+        }
+
+        .checkmark {
+            display: none;
+            font-size: 48px;
+            margin-top: 20px;
+            animation: scaleIn 0.5s ease-out;
+        }
+
+        @keyframes scaleIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 32px;
+            background: white;
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s;
+            display: none;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🗄️</div>
+        <h1>Actualizando Sistema de BINs</h1>
+        <p>Cargando nuevas ubicaciones...</p>
+
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
+        </div>
+
+        <div class="status" id="status">Limpiando caché...</div>
+        <div class="checkmark" id="checkmark">✅</div>
+        <a href="index.html" class="btn" id="continueBtn">Continuar al Sistema</a>
+    </div>
+
+    <script>
+        // Función para actualizar el estado
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+
+        // Proceso de actualización
+        async function actualizarBins() {
+            try {
+                // Paso 1: Limpiar ubicaciones
+                updateStatus('Limpiando ubicaciones antiguas...');
+                await sleep(800);
+                localStorage.removeItem('ubicaciones');
+
+                // Paso 2: Verificar
+                updateStatus('Verificando sistema...');
+                await sleep(600);
+
+                // Paso 3: Completado
+                updateStatus('¡Actualización completada!');
+                await sleep(400);
+
+                // Mostrar checkmark y botón
+                document.querySelector('.icon').style.display = 'none';
+                document.getElementById('checkmark').style.display = 'block';
+                document.getElementById('continueBtn').style.display = 'inline-block';
+
+                // Crear mensaje de éxito
+                const successMsg = document.createElement('p');
+                successMsg.style.marginTop = '20px';
+                successMsg.style.fontSize = '15px';
+                successMsg.innerHTML = '<strong>¡Listo!</strong><br>Ahora tienes acceso a los <strong>1,273 BINs</strong> actualizados.';
+                document.querySelector('.container').appendChild(successMsg);
+
+                // Auto-redirect después de 3 segundos
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 3000);
+
+            } catch (error) {
+                updateStatus('Error: ' + error.message);
+            }
+        }
+
+        // Función de espera
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Ejecutar actualización al cargar
+        window.addEventListener('load', () => {
+            actualizarBins();
+        });
+    </script>
+</body>
+</html>
