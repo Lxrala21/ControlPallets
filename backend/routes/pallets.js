@@ -37,11 +37,8 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'All fields are required' });
         }
 
-        // Check if palletId already exists
-        const [existing] = await db.query('SELECT id FROM pallets WHERE pallet_id = ?', [palletId]);
-        if (existing.length > 0) {
-            return res.status(409).json({ error: 'Pallet ID already exists' });
-        }
+        // PERMITIR DUPLICADOS: No validar si el pallet_id existe
+        // Los duplicados se manejan en la pestaña "Duplicados" del frontend
 
         const [result] = await db.query(
             'INSERT INTO pallets (pallet_id, piezas, condicion, area, fecha, turno, ubicacion, qty) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',

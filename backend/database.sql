@@ -15,20 +15,22 @@ CREATE TABLE IF NOT EXISTS ubicaciones (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table: pallets
+-- NOTA: pallet_id NO es UNIQUE para permitir duplicados (mismo pallet en diferentes fechas/ubicaciones)
 CREATE TABLE IF NOT EXISTS pallets (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    pallet_id VARCHAR(100) NOT NULL UNIQUE,
+    pallet_id VARCHAR(100) NOT NULL,
     piezas VARCHAR(255) NOT NULL,
-    condicion ENUM('Bueno', 'Dañado', 'Reparación', 'Obsoleto') NOT NULL,
+    condicion VARCHAR(100) NOT NULL,
     area VARCHAR(100) NOT NULL,
     fecha DATE NOT NULL,
-    turno ENUM('Matutino', 'Vespertino', 'Nocturno') NOT NULL,
+    turno VARCHAR(50) NOT NULL,
     ubicacion VARCHAR(100) NOT NULL,
     qty INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_pallet_id (pallet_id),
     INDEX idx_fecha (fecha),
+    INDEX idx_pallet_fecha (pallet_id, fecha),
     INDEX idx_condicion (condicion),
     INDEX idx_area (area),
     INDEX idx_turno (turno)
