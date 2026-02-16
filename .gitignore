@@ -22,3 +22,7 @@ Thumbs.db
 
 # MySQL data
 *.sql.backup
+
+# Backups (no subir backups grandes)
+backend/backups/*.sql
+!backend/backups/.gitkeep
