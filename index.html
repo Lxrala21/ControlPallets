@@ -12,8 +12,33 @@
             <h1>📦 Sistema de Control de Pallets</h1>
         </header>
 
+        <!-- Barra de filtro por mes -->
+        <div id="monthFilterBar" style="
+            display: flex; align-items: center; gap: 12px;
+            background: linear-gradient(135deg, #1F3864 0%, #2E75B6 100%);
+            padding: 10px 16px; border-radius: 4px; margin-bottom: 8px;
+            flex-wrap: wrap;
+        ">
+            <span style="color: #fff; font-size: 0.8125rem; font-weight: 600; white-space: nowrap; opacity: 0.85;">
+                📅 Periodo:
+            </span>
+            <select id="monthSelector" onchange="onMonthChange(this.value)" style="
+                padding: 5px 10px; border: none; border-radius: 3px;
+                font-size: 0.8125rem; font-weight: 600;
+                background: rgba(255,255,255,0.95); color: #1F3864;
+                cursor: pointer; min-width: 180px;
+            ">
+                <option value="">Todos los meses</option>
+            </select>
+            <span id="monthSummaryBadge" style="
+                color: #fff; font-size: 0.75rem; padding: 3px 10px;
+                border-radius: 12px; background: rgba(255,255,255,0.15);
+                white-space: nowrap;
+            ">—</span>
+        </div>
+
         <!-- Navigation Tabs -->
-        <nav class="tabs">
+        <nav class="tabs" style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
             <button class="tab-button active" data-tab="registro">
                 📝 Registro de Pallets
             </button>
@@ -31,6 +56,9 @@
                     🗄️ Admin BINs
                 </button>
             </a>
+            <button onclick="exportDashboardToExcel()" class="tab-button" style="margin-left: auto; background: linear-gradient(135deg, #1F3864 0%, #2E75B6 100%); color: white; font-weight: 600; white-space: nowrap;">
+                📥 Exportar Dashboard Excel
+            </button>
         </nav>
 
         <!-- Registro Tab -->
@@ -635,8 +663,8 @@
 
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- SheetJS CDN para importar/exportar Excel -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- xlsx-js-style CDN para importar/exportar Excel CON estilos -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style/dist/xlsx.bundle.js"></script>
     <!-- API Configuration and Service -->
     <script src="config.js"></script>
     <script src="api.js"></script>

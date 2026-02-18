@@ -1343,6 +1343,9 @@ class UbicacionManager {
     }
 }
 
+// Filtro global de mes activo ('' = todos los meses, 'YYYY-MM' = mes específico)
+let selectedMonth = '';
+
 // Clase para gestionar los pallets
 class PalletManager {
     constructor(ubicacionManager) {
@@ -1354,6 +1357,12 @@ class PalletManager {
         this.binVsNormalChart = null;
         this.ubicacionesChart = null;
         this.palletsPorDiaChart = null;
+    }
+
+    // Retorna solo los pallets del mes seleccionado (o todos si no hay filtro)
+    get activePallets() {
+        if (!selectedMonth) return this.pallets;
+        return this.pallets.filter(p => p.fecha && p.fecha.startsWith(selectedMonth));
     }
 
     get ubicacionesBin() {
@@ -1422,20 +1431,20 @@ class PalletManager {
 
     // Obtener estadísticas
     getStats() {
-        const total = this.pallets.length;
-        const totalQty = this.pallets.reduce((sum, p) => sum + parseInt(p.qty || 0), 0);
+        const total = this.activePallets.length;
+        const totalQty = this.activePallets.reduce((sum, p) => sum + parseInt(p.qty || 0), 0);
 
         // Contar días únicos
-        const fechasUnicas = new Set(this.pallets.map(p => p.fecha));
+        const fechasUnicas = new Set(this.activePallets.map(p => p.fecha));
         const totalDias = fechasUnicas.size;
 
         // Contar ubicaciones únicas usadas
-        const ubicacionesUnicas = new Set(this.pallets.map(p => p.ubicacion));
+        const ubicacionesUnicas = new Set(this.activePallets.map(p => p.ubicacion));
         const totalUbicaciones = ubicacionesUnicas.size;
 
         // Contar condiciones dinámicamente
         const condiciones = {};
-        this.pallets.forEach(p => {
+        this.activePallets.forEach(p => {
             const cond = p.condicion;
             condiciones[cond] = (condiciones[cond] || 0) + 1;
         });
@@ -1458,7 +1467,7 @@ class PalletManager {
     // Obtener datos para gráfica de condiciones
     getCondicionesData() {
         const condiciones = {};
-        this.pallets.forEach(p => {
+        this.activePallets.forEach(p => {
             condiciones[p.condicion] = (condiciones[p.condicion] || 0) + 1;
         });
         return condiciones;
@@ -1467,7 +1476,7 @@ class PalletManager {
     // Obtener datos para gráfica de áreas
     getAreasData() {
         const areas = {};
-        this.pallets.forEach(p => {
+        this.activePallets.forEach(p => {
             areas[p.area] = (areas[p.area] || 0) + 1;
         });
         return areas;
@@ -1476,7 +1485,7 @@ class PalletManager {
     // Obtener datos para gráfica de turnos
     getTurnosData() {
         const turnos = {};
-        this.pallets.forEach(p => {
+        this.activePallets.forEach(p => {
             turnos[p.turno] = (turnos[p.turno] || 0) + 1;
         });
         return turnos;
@@ -1484,22 +1493,22 @@ class PalletManager {
 
     // Obtener cantidad de pallets en ubicaciones BIN
     getPalletsEnBin() {
-        return this.pallets.filter(p => this.ubicacionesBin.includes(p.ubicacion)).length;
+        return this.activePallets.filter(p => this.ubicacionesBin.includes(p.ubicacion)).length;
     }
 
     // Obtener cantidad de pallets en Workcenter (ubicaciones normales)
     getPalletsWorkcenter() {
-        return this.pallets.filter(p => !this.ubicacionesBin.includes(p.ubicacion)).length;
+        return this.activePallets.filter(p => !this.ubicacionesBin.includes(p.ubicacion)).length;
     }
 
     // Obtener cantidad de pallets sin asignar
     getPalletsSinAsignar() {
-        return this.pallets.filter(p => p.ubicacion === 'SIN-ASIGNAR').length;
+        return this.activePallets.filter(p => p.ubicacion === 'SIN-ASIGNAR').length;
     }
 
     // Obtener datos de pallets en BIN por día
     getBinPorDiaData() {
-        const palletsBin = this.pallets.filter(p => this.ubicacionesBin.includes(p.ubicacion));
+        const palletsBin = this.activePallets.filter(p => this.ubicacionesBin.includes(p.ubicacion));
 
         const porDia = {};
         palletsBin.forEach(p => {
@@ -1516,7 +1525,7 @@ class PalletManager {
 
     // Obtener pallets en BIN con detalles por fecha
     getBinDetailsPerDay() {
-        const palletsBin = this.pallets.filter(p => this.ubicacionesBin.includes(p.ubicacion));
+        const palletsBin = this.activePallets.filter(p => this.ubicacionesBin.includes(p.ubicacion));
 
         const porDia = {};
         palletsBin.forEach(p => {
@@ -1537,7 +1546,7 @@ class PalletManager {
     // Obtener datos de pallets por ubicación
     getPalletsPorUbicacion() {
         const porUbicacion = {};
-        this.pallets.forEach(p => {
+        this.activePallets.forEach(p => {
             porUbicacion[p.ubicacion] = (porUbicacion[p.ubicacion] || 0) + 1;
         });
         return porUbicacion;
@@ -1546,7 +1555,7 @@ class PalletManager {
     // Obtener datos de todos los pallets por día
     getTodosPalletsPorDia() {
         const porDia = {};
-        this.pallets.forEach(p => {
+        this.activePallets.forEach(p => {
             const fecha = p.fecha;
             porDia[fecha] = (porDia[fecha] || 0) + 1;
         });
@@ -1561,7 +1570,7 @@ class PalletManager {
     getAnalisisDiaPorDia() {
         const analisis = {};
 
-        this.pallets.forEach(p => {
+        this.activePallets.forEach(p => {
             const fecha = p.fecha;
             if (!analisis[fecha]) {
                 analisis[fecha] = {
@@ -1591,7 +1600,7 @@ class PalletManager {
     getBinVsNormalPorDia() {
         const porDia = {};
 
-        this.pallets.forEach(p => {
+        this.activePallets.forEach(p => {
             const fecha = p.fecha;
             if (!porDia[fecha]) {
                 porDia[fecha] = { bin: 0, normal: 0 };
@@ -1676,8 +1685,9 @@ document.getElementById('palletForm').addEventListener('submit', (e) => {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('fecha').value = today;
 
-    // Actualizar filtros y tabla
+    // Actualizar filtros, selector de mes y tabla
     populateFilters();
+    populateMonthSelector();
     applyFilters();
     updateDashboard(); // Actualizar dashboard con el nuevo pallet
     if (typeof updateDuplicadosStats === 'function') {
@@ -1786,7 +1796,7 @@ let currentFilters = {
 
 // Aplicar todos los filtros
 function applyFilters() {
-    let filteredPallets = palletManager.pallets;
+    let filteredPallets = palletManager.activePallets;
 
     // Filtro de búsqueda
     if (currentFilters.search) {
@@ -1832,7 +1842,7 @@ function applyFilters() {
     }
 
     // Actualizar contador
-    const totalPallets = palletManager.pallets.length;
+    const totalPallets = palletManager.activePallets.length;
     const filteredCount = filteredPallets.length;
     const filterCountEl = document.getElementById('filterResultCount');
 
@@ -1935,6 +1945,7 @@ document.getElementById('clearAllBtn').addEventListener('click', () => {
     if (confirm('¿Estás seguro de eliminar TODOS los pallets? Esta acción no se puede deshacer.')) {
         palletManager.clearAll();
         populateFilters();
+        populateMonthSelector();
         applyFilters();
         updateDashboard(); // Actualizar dashboard después de limpiar todo
     if (typeof updateDuplicadosStats === 'function') {
@@ -2155,7 +2166,7 @@ function updateUbicacionesPorDiaTable() {
     const thead = document.getElementById('ubicacionesPorDiaTableHead');
     const tbody = document.getElementById('ubicacionesPorDiaTableBody');
 
-    if (palletManager.pallets.length === 0) {
+    if (palletManager.activePallets.length === 0) {
         thead.innerHTML = '<tr><th>Ubicación</th></tr>';
         tbody.innerHTML = `
             <tr>
@@ -2168,11 +2179,11 @@ function updateUbicacionesPorDiaTable() {
     }
 
     // Obtener todas las fechas únicas ordenadas
-    const fechasSet = new Set(palletManager.pallets.map(p => p.fecha));
+    const fechasSet = new Set(palletManager.activePallets.map(p => p.fecha));
     const fechas = Array.from(fechasSet).sort((a, b) => new Date(a) - new Date(b));
 
     // Obtener todas las ubicaciones únicas ordenadas
-    const ubicacionesSet = new Set(palletManager.pallets.map(p => p.ubicacion));
+    const ubicacionesSet = new Set(palletManager.activePallets.map(p => p.ubicacion));
     const ubicaciones = Array.from(ubicacionesSet).sort();
 
     // Crear encabezado de la tabla
@@ -2199,7 +2210,7 @@ function updateUbicacionesPorDiaTable() {
     });
 
     // Llenar la matriz con los datos
-    palletManager.pallets.forEach(pallet => {
+    palletManager.activePallets.forEach(pallet => {
         matriz[pallet.ubicacion][pallet.fecha]++;
     });
 
@@ -2793,14 +2804,86 @@ document.getElementById('quickUbicacionModal').addEventListener('click', (e) => 
     }
 });
 
+// ══════════════════════════════════════════════════
+//  FILTRO GLOBAL POR MES
+// ══════════════════════════════════════════════════
+
+// Pobla el <select> con los meses que tienen pallets registrados
+function populateMonthSelector() {
+    const select = document.getElementById('monthSelector');
+    if (!select) return;
+
+    const meses = [...new Set(
+        palletManager.pallets
+            .map(p => p.fecha ? p.fecha.substring(0, 7) : null)
+            .filter(Boolean)
+    )].sort().reverse();
+
+    // Conservar el mes seleccionado actualmente
+    const current = select.value;
+
+    // Limpiar opciones excepto la primera ("Todos")
+    while (select.options.length > 1) select.remove(1);
+
+    meses.forEach(m => {
+        const [year, month] = m.split('-');
+        const label = new Date(year, month - 1, 1)
+            .toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+        const opt = new Option(label.charAt(0).toUpperCase() + label.slice(1), m);
+        select.add(opt);
+    });
+
+    // Restaurar selección si sigue siendo válida
+    if (current && [...select.options].some(o => o.value === current)) {
+        select.value = current;
+    } else {
+        select.value = '';
+        selectedMonth = '';
+    }
+
+    updateMonthSummaryBadge();
+}
+
+// Se ejecuta cuando el usuario cambia el selector de mes
+function onMonthChange(value) {
+    selectedMonth = value;
+    updateMonthSummaryBadge();
+    applyFilters();
+    updateDashboard();
+    if (typeof updateDuplicadosStats === 'function') {
+        updateDuplicadosStats();
+        populateDuplicadosFilters();
+    }
+}
+
+// Actualiza el badge con el conteo del mes activo
+function updateMonthSummaryBadge() {
+    const badge = document.getElementById('monthSummaryBadge');
+    if (!badge) return;
+    const count = palletManager.activePallets.length;
+    if (!selectedMonth) {
+        badge.textContent = `${palletManager.pallets.length} pallets totales`;
+        badge.style.background = 'rgba(255,255,255,0.15)';
+    } else if (count === 0) {
+        badge.textContent = 'Sin datos este mes';
+        badge.style.background = 'rgba(255,100,100,0.3)';
+    } else {
+        badge.textContent = `${count} pallets este mes`;
+        badge.style.background = 'rgba(255,255,255,0.15)';
+    }
+}
+
+// ══════════════════════════════════════════════════
+
 // Inicializar al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
     // Establecer fecha actual por defecto
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('fecha').value = today;
 
-    // Poblar filtros y renderizar tabla inicial
+    // Poblar filtros, selector de mes y renderizar tabla inicial
     populateFilters();
+    populateMonthSelector();
     applyFilters();
 
     // Renderizar ubicaciones
@@ -3589,6 +3672,7 @@ function confirmImport() {
 
     // Actualizar UI
     populateFilters();
+    populateMonthSelector();
     applyFilters();
     updateUbicacionSelects();
     renderUbicacionesList();
@@ -3631,39 +3715,119 @@ function exportToExcel() {
         return;
     }
 
-    // Preparar datos para exportar
-    const exportData = palletManager.pallets.map(pallet => ({
-        'Pallet ID': pallet.palletId,
-        'Piezas': pallet.piezas,
-        'Condición': pallet.condicion,
-        'Área': pallet.area,
-        'Fecha': pallet.fecha,
-        'Turno': pallet.turno,
-        'Ubicación': pallet.ubicacion,
-        'QTY': pallet.qty
-    }));
+    const pallets = palletManager.activePallets;
+    const now = new Date();
+    const fechaArchivo = now.toISOString().split('T')[0];
+    const hoy = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
 
-    // Crear libro de Excel
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(exportData);
+    // ── Paleta de colores ──
+    const C_DARK  = '1F3864';
+    const C_BLUE  = '2E75B6';
+    const C_LIGHT = 'D6E4F0';
+    const C_WHITE = 'FFFFFF';
+    const C_BLACK = '000000';
+    const C_GRAY  = 'F2F2F2';
+    const C_BORDER = 'D0D0D0';
 
-    // Ajustar ancho de columnas
-    ws['!cols'] = [
-        { wch: 15 },  // Pallet ID
-        { wch: 30 },  // Piezas
-        { wch: 15 },  // Condición
-        { wch: 20 },  // Área
-        { wch: 12 },  // Fecha
-        { wch: 10 },  // Turno
-        { wch: 25 },  // Ubicación
-        { wch: 8 }    // QTY
+    // ── Bordes ──
+    const bThin = {
+        top:    { style: 'thin', color: { rgb: C_BORDER } },
+        bottom: { style: 'thin', color: { rgb: C_BORDER } },
+        left:   { style: 'thin', color: { rgb: C_BORDER } },
+        right:  { style: 'thin', color: { rgb: C_BORDER } }
+    };
+    const bHdr = {
+        top:    { style: 'thin', color: { rgb: C_BLACK } },
+        bottom: { style: 'thin', color: { rgb: C_BLACK } },
+        left:   { style: 'thin', color: { rgb: C_BLACK } },
+        right:  { style: 'thin', color: { rgb: C_BLACK } }
+    };
+
+    // ── Estilos ──
+    const sTitle = {
+        font: { bold: true, sz: 16, color: { rgb: C_WHITE } },
+        fill: { patternType: 'solid', fgColor: { rgb: C_DARK } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+    };
+    const sSub = {
+        font: { sz: 10, color: { rgb: C_WHITE } },
+        fill: { patternType: 'solid', fgColor: { rgb: C_BLUE } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+    };
+    const sHdr = {
+        font: { bold: true, sz: 11, color: { rgb: C_WHITE } },
+        fill: { patternType: 'solid', fgColor: { rgb: C_BLUE } },
+        border: bHdr,
+        alignment: { horizontal: 'center', vertical: 'center' }
+    };
+    function sData(isGray, isNum) {
+        return {
+            font: { sz: 10, color: { rgb: C_BLACK } },
+            fill: { patternType: 'solid', fgColor: { rgb: isGray ? C_GRAY : C_WHITE } },
+            border: bThin,
+            alignment: { horizontal: isNum ? 'center' : 'left', vertical: 'center' }
+        };
+    }
+
+    // ── Construir AOA ──
+    const COLS = 8;
+    const aoa = [];
+    aoa.push([]);  // fila 1 — título (merge)
+    aoa.push([]);  // fila 2 — subtítulo (merge)
+    aoa.push([]);  // fila 3 — vacía
+
+    // headers fila 4
+    aoa.push(['Pallet ID', 'Piezas', 'Condición', 'Área', 'Fecha', 'Turno', 'Ubicación', 'QTY']);
+
+    // datos desde fila 5
+    pallets.forEach(p => {
+        aoa.push([
+            p.palletId  || '',
+            p.piezas    || '',
+            p.condicion || '',
+            p.area      || '',
+            p.fecha     || '',
+            p.turno     || '',
+            p.ubicacion || '',
+            p.qty       || 0
+        ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // ── Título ──
+    ws['A1'] = { v: 'CONTROL DE PALLETS — DATOS EXPORTADOS', t: 's', s: sTitle };
+    ws['A2'] = { v: `Generado: ${hoy}  |  Total registros: ${pallets.length}`, t: 's', s: sSub };
+
+    ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: COLS - 1 } },  // título
+        { s: { r: 1, c: 0 }, e: { r: 1, c: COLS - 1 } }   // subtítulo
     ];
 
-    XLSX.utils.book_append_sheet(wb, ws, 'Pallets');
+    // ── Headers (fila 4 = índice 3) ──
+    ['A4','B4','C4','D4','E4','F4','G4','H4'].forEach(ref => {
+        if (ws[ref]) ws[ref].s = sHdr;
+    });
 
-    // Descargar archivo
-    const fecha = new Date().toISOString().split('T')[0];
-    XLSX.writeFile(wb, `Pallets_${fecha}.xlsx`);
+    // ── Datos (desde fila 5 = índice 4) ──
+    for (let r = 4; r < aoa.length; r++) {
+        const isGray = (r - 4) % 2 === 1;
+        for (let c = 0; c < COLS; c++) {
+            const ref = XLSX.utils.encode_cell({ r, c });
+            if (ws[ref]) ws[ref].s = sData(isGray, c === 7);
+        }
+    }
+
+    // ── Anchos y altos ──
+    ws['!cols'] = [
+        { wch: 18 }, { wch: 30 }, { wch: 14 }, { wch: 20 },
+        { wch: 12 }, { wch: 10 }, { wch: 27 }, { wch: 7 }
+    ];
+    ws['!rows'] = [{ hpt: 28 }, { hpt: 18 }, { hpt: 8 }, { hpt: 20 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Pallets');
+    XLSX.writeFile(wb, `Pallets_${fechaArchivo}.xlsx`);
 
     showNotification('✅ Datos exportados exitosamente', 'success');
 }
