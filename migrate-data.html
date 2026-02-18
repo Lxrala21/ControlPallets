@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Migrar Datos a Servidor</title>
+    <style>
+        body { font-family: monospace; background: #1a1a1a; color: #e0e0e0; padding: 30px; max-width: 700px; margin: 0 auto; }
+        h1 { color: #4CAF50; }
+        .card { background: #2a2a2a; border: 1px solid #444; border-radius: 4px; padding: 20px; margin: 16px 0; }
+        .stat { font-size: 1.5rem; color: #4CAF50; font-weight: bold; }
+        button { background: #4CAF50; color: #000; border: none; padding: 12px 24px; font-size: 1rem; font-family: monospace; cursor: pointer; border-radius: 2px; margin-top: 10px; }
+        button:disabled { background: #555; color: #888; cursor: not-allowed; }
+        #log { background: #111; border: 1px solid #333; padding: 12px; height: 300px; overflow-y: auto; font-size: 0.8rem; line-height: 1.6; }
+        .ok  { color: #4CAF50; }
+        .err { color: #f44336; }
+        .info{ color: #2196F3; }
+        .warn{ color: #FF9800; }
+        #progress { width: 100%; height: 8px; background: #333; border-radius: 4px; margin: 8px 0; }
+        #progressBar { height: 100%; background: #4CAF50; border-radius: 4px; width: 0%; transition: width 0.2s; }
+    </style>
+</head>
+<body>
+    <h1>🔄 Migrar Datos localStorage → MySQL</h1>
+
+    <div class="card">
+        <h3>Datos encontrados en este navegador:</h3>
+        <p>Pallets en localStorage: <span class="stat" id="palletsCount">...</span></p>
+        <p>Ubicaciones en localStorage: <span class="stat" id="ubicacionesCount">...</span></p>
+        <p>API destino: <span style="color:#2196F3">http://192.168.80.103:8089/api.php</span></p>
+    </div>
+
+    <div class="card">
+        <div id="progress"><div id="progressBar"></div></div>
+        <button id="btnMigrate" onclick="startMigration()">▶ Iniciar Migración</button>
+        <button id="btnClear" onclick="clearServer()" style="background:#f44336; margin-left:10px; display:none">🗑 Limpiar servidor primero</button>
+    </div>
+
+    <div class="card">
+        <div id="log"><span class="info">Listo para migrar. Presiona el botón para comenzar.</span></div>
+    </div>
+
+    <script>
+        const API = 'http://192.168.80.103:8089/api.php';
+
+        function log(msg, type = 'info') {
+            const div = document.getElementById('log');
+            const line = document.createElement('div');
+            line.className = type;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            div.appendChild(line);
+            div.scrollTop = div.scrollHeight;
+        }
+
+        function setProgress(pct) {
+            document.getElementById('progressBar').style.width = pct + '%';
+        }
+
+        async function apiPost(action, body) {
+            const resp = await fetch(`${API}?action=${action}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            return resp.json();
+        }
+
+        // Detectar datos en localStorage al cargar
+        window.onload = () => {
+            const pallets = JSON.parse(localStorage.getItem('pallets') || '[]');
+            const ubicaciones = JSON.parse(localStorage.getItem('ubicaciones') || '[]');
+            document.getElementById('palletsCount').textContent = pallets.length;
+            document.getElementById('ubicacionesCount').textContent = ubicaciones.length;
+
+            if (pallets.length === 0 && ubicaciones.length === 0) {
+                log('⚠ No hay datos en localStorage de este navegador.', 'warn');
+                log('Asegúrate de abrir este archivo con el mismo navegador/perfil que usabas antes.', 'warn');
+                document.getElementById('btnMigrate').disabled = true;
+            } else {
+                log(`Encontrados: ${pallets.length} pallets y ${ubicaciones.length} ubicaciones`, 'ok');
+                document.getElementById('btnClear').style.display = 'inline-block';
+            }
+        };
+
+        async function clearServer() {
+            if (!confirm('¿Limpiar TODOS los datos del servidor antes de migrar?')) return;
+            log('Limpiando datos del servidor...', 'warn');
+            try {
+                // Obtener y borrar pallets
+                const pr = await fetch(`${API}?action=getPallets`).then(r => r.json());
+                for (const p of pr.data) {
+                    await apiPost('deletePallet', { id: p.id });
+                }
+                log(`  Pallets eliminados del servidor: ${pr.data.length}`, 'warn');
+
+                // Obtener y borrar ubicaciones
+                const ur = await fetch(`${API}?action=getUbicaciones`).then(r => r.json());
+                for (const u of ur.data) {
+                    await apiPost('deleteUbicacion', { codigo: u.codigo });
+                }
+                log(`  Ubicaciones eliminadas del servidor: ${ur.data.length}`, 'warn');
+                log('Servidor limpio. Listo para migrar.', 'ok');
+            } catch (e) {
+                log('Error limpiando: ' + e.message, 'err');
+            }
+        }
+
+        async function startMigration() {
+            const btn = document.getElementById('btnMigrate');
+            btn.disabled = true;
+            btn.textContent = '⏳ Migrando...';
+
+            const pallets = JSON.parse(localStorage.getItem('pallets') || '[]');
+            const ubicaciones = JSON.parse(localStorage.getItem('ubicaciones') || '[]');
+            const total = pallets.length + ubicaciones.length;
+            let done = 0, errores = 0;
+
+            log(`Iniciando migración: ${ubicaciones.length} ubicaciones + ${pallets.length} pallets`, 'info');
+
+            // ─── Migrar ubicaciones ──────────────────────────────────────────
+            log(`--- Migrando ubicaciones (${ubicaciones.length}) ---`, 'info');
+            for (const ub of ubicaciones) {
+                try {
+                    const r = await apiPost('createUbicacion', { codigo: ub.codigo, esBin: ub.esBin ? 1 : 0 });
+                    if (r.success) {
+                        if (r.created > 0) {
+                            log(`  ✓ Ubicación: ${ub.codigo}`, 'ok');
+                        } else {
+                            log(`  ~ Ya existe: ${ub.codigo}`, 'warn');
+                        }
+                    } else {
+                        log(`  ✗ Error ubicación ${ub.codigo}: ${r.error}`, 'err');
+                        errores++;
+                    }
+                } catch (e) {
+                    log(`  ✗ ${ub.codigo}: ${e.message}`, 'err');
+                    errores++;
+                }
+                done++;
+                setProgress((done / total) * 100);
+                // Pequeña pausa para no saturar el servidor
+                if (done % 20 === 0) await new Promise(r => setTimeout(r, 50));
+            }
+
+            // ─── Migrar pallets ──────────────────────────────────────────────
+            log(`--- Migrando pallets (${pallets.length}) ---`, 'info');
+            for (const p of pallets) {
+                try {
+                    const r = await apiPost('createPallet', p);
+                    if (r.success) {
+                        log(`  ✓ Pallet: ${p.palletId} (${p.fecha})`, 'ok');
+                    } else {
+                        log(`  ✗ Error pallet ${p.palletId}: ${r.error}`, 'err');
+                        errores++;
+                    }
+                } catch (e) {
+                    log(`  ✗ ${p.palletId}: ${e.message}`, 'err');
+                    errores++;
+                }
+                done++;
+                setProgress((done / total) * 100);
+                if (done % 10 === 0) await new Promise(r => setTimeout(r, 50));
+            }
+
+            setProgress(100);
+            log('', 'info');
+            if (errores === 0) {
+                log(`✅ Migración completa: ${pallets.length} pallets y ${ubicaciones.length} ubicaciones subidos sin errores.`, 'ok');
+                log('Ahora abre http://192.168.80.103:8089 — los datos estarán disponibles.', 'ok');
+            } else {
+                log(`⚠ Migración completada con ${errores} errores. Revisa el log.`, 'warn');
+            }
+
+            btn.textContent = '✅ Migración completada';
+        }
+    </script>
+</body>
+</html>

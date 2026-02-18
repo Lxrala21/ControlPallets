@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administración de BINs</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="config.js"></script>
     <style>
         .bins-grid {
             display: grid;
@@ -183,17 +184,28 @@
     </div>
 
     <script>
-        // Cargar ubicaciones del localStorage
-        function loadUbicaciones() {
-            const data = localStorage.getItem('ubicaciones');
-            return data ? JSON.parse(data) : [];
+        // Cache de datos cargados desde API
+        let cachedUbicaciones = [];
+        let cachedPallets = [];
+
+        // Cargar datos desde API
+        async function fetchData() {
+            try {
+                const [ubResp, palResp] = await Promise.all([
+                    fetch(`${API_CONFIG.BASE_URL}?action=getUbicaciones`),
+                    fetch(`${API_CONFIG.BASE_URL}?action=getPallets`)
+                ]);
+                const ubData = await ubResp.json();
+                const palData = await palResp.json();
+                if (ubData.success) cachedUbicaciones = ubData.data;
+                if (palData.success) cachedPallets = palData.data;
+            } catch (e) {
+                console.error('Error cargando datos desde API:', e);
+            }
         }
 
-        // Cargar pallets del localStorage
-        function loadPallets() {
-            const data = localStorage.getItem('pallets');
-            return data ? JSON.parse(data) : [];
-        }
+        function loadUbicaciones() { return cachedUbicaciones; }
+        function loadPallets() { return cachedPallets; }
 
         // Renderizar ubicaciones
         function renderUbicaciones(filter = 'all', searchQuery = '') {
@@ -339,7 +351,14 @@
 
         // Recargar ubicaciones
         function reloadUbicaciones() {
-            location.reload();
+            fetchData().then(() => {
+                updateStats();
+                renderUbicaciones(
+                    document.getElementById('filterType').value,
+                    document.getElementById('searchBins').value
+                );
+                renderSeriesAnalysis();
+            });
         }
 
         // Event listeners
@@ -353,10 +372,12 @@
             renderUbicaciones(e.target.value, search);
         });
 
-        // Inicializar
-        updateStats();
-        renderUbicaciones();
-        renderSeriesAnalysis();
+        // Inicializar — cargar datos desde API
+        fetchData().then(() => {
+            updateStats();
+            renderUbicaciones();
+            renderSeriesAnalysis();
+        });
     </script>
 </body>
 </html>

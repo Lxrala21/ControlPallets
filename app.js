@@ -6,12 +6,11 @@ class UbicacionManager {
     }
 
     loadUbicaciones() {
-        const data = localStorage.getItem('ubicaciones');
-        return data ? JSON.parse(data) : [];
+        return [];
     }
 
     saveUbicaciones() {
-        localStorage.setItem('ubicaciones', JSON.stringify(this.ubicaciones));
+        // no-op: datos guardados vía API individual
     }
 
     initDefaultUbicaciones() {
@@ -1315,13 +1314,21 @@ class UbicacionManager {
         }
         this.ubicaciones.push({ codigo, esBin });
         this.ubicaciones.sort((a, b) => a.codigo.localeCompare(b.codigo));
-        this.saveUbicaciones();
+        fetch(`${API_CONFIG.BASE_URL}?action=createUbicacion`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codigo, esBin: esBin ? 1 : 0 })
+        }).catch(e => console.error('Error creando ubicacion en API:', e));
         return true;
     }
 
     deleteUbicacion(codigo) {
         this.ubicaciones = this.ubicaciones.filter(u => u.codigo !== codigo);
-        this.saveUbicaciones();
+        fetch(`${API_CONFIG.BASE_URL}?action=deleteUbicacion`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codigo })
+        }).catch(e => console.error('Error eliminando ubicacion en API:', e));
     }
 
     getUbicaciones() {
@@ -1340,6 +1347,30 @@ class UbicacionManager {
         const bin = this.ubicaciones.filter(u => u.esBin).length;
         const normales = total - bin;
         return { total, bin, normales };
+    }
+
+    async syncFromServer() {
+        try {
+            const resp = await fetch(`${API_CONFIG.BASE_URL}?action=getUbicaciones`);
+            const data = await resp.json();
+            if (data.success) {
+                if (data.data.length > 0) {
+                    this.ubicaciones = data.data;
+                } else {
+                    // Primera ejecución: sembrar ubicaciones por defecto al servidor
+                    const defaults = this.ubicaciones;
+                    if (defaults.length > 0) {
+                        await fetch(`${API_CONFIG.BASE_URL}?action=seedUbicaciones`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ubicaciones: defaults })
+                        });
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error sincronizando ubicaciones desde servidor:', e);
+        }
     }
 }
 
@@ -1371,27 +1402,35 @@ class PalletManager {
 
     // Cargar pallets desde localStorage
     loadPallets() {
-        const data = localStorage.getItem('pallets');
-        return data ? JSON.parse(data) : [];
+        return [];
     }
 
     // Guardar pallets en localStorage
     savePallets() {
-        localStorage.setItem('pallets', JSON.stringify(this.pallets));
+        // no-op: datos guardados vía API individual
     }
 
     // Agregar nuevo pallet
     addPallet(pallet) {
-        pallet.id = Date.now().toString();
+        // ID único: timestamp + random para evitar colisiones en importación masiva
+        pallet.id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
         this.pallets.push(pallet);
-        this.savePallets();
+        fetch(`${API_CONFIG.BASE_URL}?action=createPallet`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pallet)
+        }).catch(e => console.error('Error creando pallet en API:', e));
         return true;
     }
 
     // Eliminar pallet
     deletePallet(id) {
         this.pallets = this.pallets.filter(p => p.id !== id);
-        this.savePallets();
+        fetch(`${API_CONFIG.BASE_URL}?action=deletePallet`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        }).catch(e => console.error('Error eliminando pallet en API:', e));
     }
 
     // Obtener pallet por ID
@@ -1404,7 +1443,11 @@ class PalletManager {
         const index = this.pallets.findIndex(p => p.id === id);
         if (index !== -1) {
             this.pallets[index] = { ...this.pallets[index], ...updatedData };
-            this.savePallets();
+            fetch(`${API_CONFIG.BASE_URL}?action=updatePallet`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, ...updatedData })
+            }).catch(e => console.error('Error actualizando pallet en API:', e));
             return true;
         }
         return false;
@@ -1427,6 +1470,18 @@ class PalletManager {
     clearAll() {
         this.pallets = [];
         this.savePallets();
+    }
+
+    async syncFromServer() {
+        try {
+            const resp = await fetch(`${API_CONFIG.BASE_URL}?action=getPallets`);
+            const data = await resp.json();
+            if (data.success) {
+                this.pallets = data.data.map(p => ({ ...p, qty: parseInt(p.qty || 0) }));
+            }
+        } catch (e) {
+            console.error('Error sincronizando pallets desde servidor:', e);
+        }
     }
 
     // Obtener estadísticas
@@ -2876,10 +2931,16 @@ function updateMonthSummaryBadge() {
 // ══════════════════════════════════════════════════
 
 // Inicializar al cargar la página
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Establecer fecha actual por defecto
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('fecha').value = today;
+
+    // Sincronizar datos desde el servidor
+    await Promise.all([
+        ubicacionManager.syncFromServer(),
+        palletManager.syncFromServer()
+    ]);
 
     // Poblar filtros, selector de mes y renderizar tabla inicial
     populateFilters();
@@ -3022,9 +3083,22 @@ function handleExcelFile(e) {
             const data = new Uint8Array(event.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
 
-            // Leer la primera hoja
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
+            // Detectar la hoja con datos de pallets (buscar columna PalletID o Pallet ID)
+            const palletColumns = ['palletid', 'pallet id', 'id', 'pallet_id'];
+            let selectedSheet = workbook.SheetNames[0];
+            for (const sheetName of workbook.SheetNames) {
+                const ws = workbook.Sheets[sheetName];
+                const preview = XLSX.utils.sheet_to_json(ws, { header: 1, range: 0 });
+                if (preview.length > 0) {
+                    const headers = preview[0].map(h => String(h || '').toLowerCase().trim());
+                    if (headers.some(h => palletColumns.includes(h))) {
+                        selectedSheet = sheetName;
+                        break;
+                    }
+                }
+            }
+            console.log('📋 Hoja seleccionada para importar:', selectedSheet);
+            const worksheet = workbook.Sheets[selectedSheet];
 
             // Convertir a JSON
             const jsonData = XLSX.utils.sheet_to_json(worksheet);
@@ -3643,32 +3717,47 @@ function showImportPreview(data, warnings, duplicados = []) {
 }
 
 // Confirmar importación
-function confirmImport() {
+async function confirmImport() {
     if (importedData.length === 0) {
         alert('No hay datos para importar');
         return;
     }
 
-    // Crear nuevas ubicaciones primero
+    // Deshabilitar botón durante importación
+    const btnConfirm = document.querySelector('[onclick="confirmImport()"]');
+    if (btnConfirm) { btnConfirm.disabled = true; btnConfirm.textContent = '⏳ Importando...'; }
+
+    // Crear nuevas ubicaciones primero (esperar cada una)
     let ubicacionesCreadas = 0;
-    Object.values(newUbicaciones).forEach(ub => {
+    for (const ub of Object.values(newUbicaciones)) {
         if (ubicacionManager.addUbicacion(ub.codigo, ub.esBin)) {
             ubicacionesCreadas++;
         }
-    });
+    }
 
     // Asegurar que existe SIN-ASIGNAR
     if (!ubicacionManager.getUbicaciones().some(u => u.codigo === 'SIN-ASIGNAR')) {
         ubicacionManager.addUbicacion('SIN-ASIGNAR', false);
     }
 
-    // Agregar todos los pallets
+    // Agregar pallets enviando cada uno a la API y esperando respuesta
     let successCount = 0;
-    importedData.forEach(pallet => {
-        if (palletManager.addPallet(pallet)) {
-            successCount++;
+    for (const pallet of importedData) {
+        // Generar ID único antes del fetch
+        pallet.id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+        palletManager.pallets.push(pallet);
+        try {
+            const resp = await fetch(`${API_CONFIG.BASE_URL}?action=createPallet`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(pallet)
+            });
+            const data = await resp.json();
+            if (data.success) successCount++;
+        } catch (e) {
+            console.error('Error importando pallet:', pallet.palletId, e);
         }
-    });
+    }
 
     // Actualizar UI
     populateFilters();
@@ -3676,13 +3765,15 @@ function confirmImport() {
     applyFilters();
     updateUbicacionSelects();
     renderUbicacionesList();
-    updateDashboard(); // Actualizar dashboard con los nuevos datos
+    updateDashboard();
     if (typeof updateDuplicadosStats === 'function') {
-        updateDuplicadosStats(); // Actualizar duplicados
+        updateDuplicadosStats();
     }
 
     // Limpiar vista previa
     cancelImport();
+
+    if (btnConfirm) { btnConfirm.disabled = false; btnConfirm.textContent = '✅ Confirmar Importación'; }
 
     // Mensaje de éxito con detalles
     let mensaje = `✅ ${successCount} pallets importados exitosamente`;
