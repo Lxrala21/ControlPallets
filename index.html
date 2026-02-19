@@ -5,11 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Pallets</title>
     <link rel="stylesheet" href="styles.css">
+    <script>
+        (async function checkSession() {
+            try {
+                const res = await fetch('http://192.168.80.103:8089/api.php?action=checkAuth', { credentials: 'include' });
+                if (!res.ok) { window.location.href = 'login.html'; return; }
+                const data = await res.json();
+                if (!data.authenticated) { window.location.href = 'login.html'; return; }
+                window.currentUser = data.user;
+                window.currentRole = data.role;
+            } catch(e) { window.location.href = 'login.html'; }
+        })();
+    </script>
 </head>
 <body>
     <div class="container">
-        <header>
+        <header style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
             <h1>📦 Sistema de Control de Pallets</h1>
+            <div id="userInfoBar" style="display: flex; align-items: center; gap: 12px; font-size: 0.8125rem;">
+                <span id="userInfoText" style="color: var(--text-secondary);"></span>
+                <button onclick="doLogout()" style="
+                    padding: 5px 14px; border: 1px solid var(--border-color);
+                    border-radius: 3px; background: #fff; cursor: pointer;
+                    font-size: 0.8125rem; font-weight: 600; color: #c0392b;">
+                    Cerrar Sesión
+                </button>
+            </div>
         </header>
 
         <!-- Barra de filtro por mes -->
@@ -51,7 +72,7 @@
             <button class="tab-button" data-tab="configuracion">
                 ⚙️ Configuración
             </button>
-            <a href="bins-admin.html" style="text-decoration: none;">
+            <a id="adminBinsLink" href="bins-admin.html" style="text-decoration: none;">
                 <button class="tab-button" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
                     🗄️ Admin BINs
                 </button>
@@ -670,5 +691,30 @@
     <script src="api.js"></script>
     <script src="app.js"></script>
     <script src="duplicados_functions.js"></script>
+    <script>
+        // Mostrar info de usuario y controlar acceso a Admin BINs
+        window.addEventListener('DOMContentLoaded', function() {
+            const user = window.currentUser;
+            const role = window.currentRole;
+            if (user) {
+                const roleLabel = role === 'admin' ? 'Administrador' : 'Operador';
+                document.getElementById('userInfoText').textContent = '\uD83D\uDC64 ' + user + ' (' + roleLabel + ')';
+            }
+            if (role !== 'admin') {
+                const link = document.getElementById('adminBinsLink');
+                if (link) link.style.display = 'none';
+            }
+        });
+
+        async function doLogout() {
+            try {
+                await fetch('http://192.168.80.103:8089/api.php?action=logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch(e) {}
+            window.location.href = 'login.html';
+        }
+    </script>
 </body>
 </html>

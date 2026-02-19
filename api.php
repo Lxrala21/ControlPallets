@@ -1,4 +1,6 @@
 <?php
+session_start();
+
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
@@ -38,7 +40,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = json_decode($raw, true) ?? [];
 }
 
+// ─── PROTECCIÓN: todas las acciones excepto auth requieren sesión ─────────────
+if (!in_array($action, ['login', 'logout', 'checkAuth', 'health']) && empty($_SESSION['user'])) {
+    http_response_code(401);
+    echo json_encode(['error' => 'No autorizado']);
+    exit;
+}
+
 switch ($action) {
+
+    // ─── AUTH: LOGIN ──────────────────────────────────────────────────────────
+    case 'login':
+        $USERS = [
+            'admin'    => ['password' => password_hash('Admin2026!', PASSWORD_DEFAULT), 'role' => 'admin'],
+            'operador' => ['password' => password_hash('Op2026!',    PASSWORD_DEFAULT), 'role' => 'user'],
+        ];
+        $username = trim($input['username'] ?? '');
+        $password = trim($input['password'] ?? '');
+        if (isset($USERS[$username]) && password_verify($password, $USERS[$username]['password'])) {
+            $_SESSION['user'] = $username;
+            $_SESSION['role'] = $USERS[$username]['role'];
+            echo json_encode(['success' => true, 'role' => $_SESSION['role'], 'user' => $username]);
+        } else {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'error' => 'Usuario o contraseña incorrectos']);
+        }
+        break;
+
+    // ─── AUTH: LOGOUT ─────────────────────────────────────────────────────────
+    case 'logout':
+        session_destroy();
+        echo json_encode(['success' => true]);
+        break;
+
+    // ─── AUTH: CHECK SESSION ──────────────────────────────────────────────────
+    case 'checkAuth':
+        if (!empty($_SESSION['user'])) {
+            echo json_encode(['authenticated' => true, 'user' => $_SESSION['user'], 'role' => $_SESSION['role']]);
+        } else {
+            http_response_code(401);
+            echo json_encode(['authenticated' => false]);
+        }
+        break;
 
     // ─── HEALTH ──────────────────────────────────────────────────────────────
     case 'health':
