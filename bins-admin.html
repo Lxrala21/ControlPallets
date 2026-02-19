@@ -6,12 +6,11 @@
     <title>Administración de BINs</title>
     <link rel="stylesheet" href="styles.css">
     <script>
-        (async function checkAdmin() {
+        (async function checkAuth() {
             try {
                 const res = await fetch('http://192.168.80.103:8089/api.php?action=checkAuth', { credentials: 'include' });
                 const data = await res.json();
                 if (!data.authenticated) { window.location.href = 'login.html'; return; }
-                if (data.role !== 'admin') { window.location.href = 'index.html'; return; }
             } catch(e) { window.location.href = 'login.html'; }
         })();
     </script>

@@ -6,7 +6,9 @@
     <title>Control de Pallets</title>
     <link rel="stylesheet" href="styles.css">
     <script>
-        (async function checkSession() {
+        let _authDone = false, _domDone = false;
+
+        window.authReady = (async function checkSession() {
             try {
                 const res = await fetch('http://192.168.80.103:8089/api.php?action=checkAuth', { credentials: 'include' });
                 if (!res.ok) { window.location.href = 'login.html'; return; }
@@ -14,8 +16,26 @@
                 if (!data.authenticated) { window.location.href = 'login.html'; return; }
                 window.currentUser = data.user;
                 window.currentRole = data.role;
+                _authDone = true;
+                if (_domDone) _applyRoleUI();
             } catch(e) { window.location.href = 'login.html'; }
         })();
+
+        function _applyRoleUI() {
+            const isAdmin = window.currentRole === 'admin';
+            const roleLabel = isAdmin ? 'Administrador' : 'Operador';
+            const infoEl = document.getElementById('userInfoText');
+            if (infoEl) infoEl.textContent = '\uD83D\uDC64 ' + window.currentUser + ' (' + roleLabel + ')';
+            if (!isAdmin) {
+                const clearBtn = document.getElementById('clearAllBtn');
+                if (clearBtn) clearBtn.style.display = 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            _domDone = true;
+            if (_authDone) _applyRoleUI();
+        });
     </script>
 </head>
 <body>
@@ -692,20 +712,6 @@
     <script src="app.js"></script>
     <script src="duplicados_functions.js"></script>
     <script>
-        // Mostrar info de usuario y controlar acceso a Admin BINs
-        window.addEventListener('DOMContentLoaded', function() {
-            const user = window.currentUser;
-            const role = window.currentRole;
-            if (user) {
-                const roleLabel = role === 'admin' ? 'Administrador' : 'Operador';
-                document.getElementById('userInfoText').textContent = '\uD83D\uDC64 ' + user + ' (' + roleLabel + ')';
-            }
-            if (role !== 'admin') {
-                const link = document.getElementById('adminBinsLink');
-                if (link) link.style.display = 'none';
-            }
-        });
-
         async function doLogout() {
             try {
                 await fetch('http://192.168.80.103:8089/api.php?action=logout', {

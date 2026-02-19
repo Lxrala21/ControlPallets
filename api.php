@@ -152,6 +152,11 @@ switch ($action) {
 
     // ─── PALLETS DELETE ───────────────────────────────────────────────────────
     case 'deletePallet':
+        if ($_SESSION['role'] !== 'admin') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Sin permisos para eliminar']);
+            break;
+        }
         $id = $input['id'] ?? '';
         $stmt = $conn->prepare("DELETE FROM pallets WHERE id=?");
         $stmt->bind_param('s', $id);
@@ -190,6 +195,11 @@ switch ($action) {
 
     // ─── UBICACIONES DELETE ───────────────────────────────────────────────────
     case 'deleteUbicacion':
+        if ($_SESSION['role'] !== 'admin') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Sin permisos para eliminar']);
+            break;
+        }
         $codigo = $input['codigo'] ?? '';
         $stmt = $conn->prepare("DELETE FROM ubicaciones WHERE codigo=?");
         $stmt->bind_param('s', $codigo);

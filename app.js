@@ -1787,9 +1787,7 @@ function renderPalletsTable(palletsToShow = null) {
                 <button class="btn btn-edit btn-small" onclick="openEditModal('${pallet.id}')">
                     Editar
                 </button>
-                <button class="btn btn-danger btn-small" onclick="deletePallet('${pallet.id}')">
-                    Eliminar
-                </button>
+                ${window.currentRole === 'admin' ? `<button class="btn btn-danger btn-small" onclick="deletePallet('${pallet.id}')">Eliminar</button>` : ''}
             </td>
         </tr>
     `).join('');
@@ -2748,9 +2746,7 @@ function renderUbicacionesList() {
                 </span>
                 <span>${ubicacion.codigo}</span>
             </div>
-            <button class="ubicacion-delete" onclick="deleteUbicacion('${ubicacion.codigo}')">
-                Eliminar
-            </button>
+            ${window.currentRole === 'admin' ? `<button class="ubicacion-delete" onclick="deleteUbicacion('${ubicacion.codigo}')">Eliminar</button>` : ''}
         </div>
     `).join('');
 
